@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import * as PIXI from 'pixi.js';
+// @ts-ignore - pixi-live2d-display 类型定义不完整
 import { Live2DModel } from 'pixi-live2d-display';
 
 // 注册 Live2D
+// @ts-ignore
 window.PIXI = PIXI;
 
 interface Live2DAvatarProps {
@@ -20,7 +22,7 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const appRef = useRef<PIXI.Application | null>(null);
-  const modelRef = useRef<Live2DModel | null>(null);
+  const modelRef = useRef<any>(null);
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -82,10 +84,10 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
       model.anchor.set(0.5, 0.5);
 
       // 添加到舞台
-      app.stage.addChild(model);
+      app.stage.addChild(model as any);
 
       // 启用鼠标跟踪
-      model.on('hit', (hitAreas) => {
+      model.on('hit', (hitAreas: string[]) => {
         if (hitAreas.includes('body')) {
           model.motion('tap_body');
         }
@@ -106,12 +108,13 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
     const model = modelRef.current;
 
     // 播放说话动作
-    if (model.internalModel.motionManager) {
-      model.motion('talk', 0, PIXI.Live2DModel.PRIORITY_FORCE);
+    if (model.internalModel?.motionManager) {
+      // @ts-ignore
+      model.motion('talk', 0, PIXI.Live2DModel?.PRIORITY_FORCE || 3);
     }
 
     // 控制嘴巴动画
-    if (model.internalModel.coreModel) {
+    if (model.internalModel?.coreModel) {
       const mouthParams = [
         'ParamMouthOpenY',
         'PARAM_MOUTH_OPEN_Y',
@@ -129,6 +132,7 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
 
         mouthParams.forEach(param => {
           try {
+            // @ts-ignore
             model.internalModel.coreModel.setParameterValueById(param, value);
           } catch (e) {
             // 参数不存在
@@ -155,7 +159,7 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
     }
 
     // 重置嘴巴参数
-    if (model.internalModel.coreModel) {
+    if (model.internalModel?.coreModel) {
       const mouthParams = [
         'ParamMouthOpenY',
         'PARAM_MOUTH_OPEN_Y',
@@ -164,6 +168,7 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
 
       mouthParams.forEach(param => {
         try {
+          // @ts-ignore
           model.internalModel.coreModel.setParameterValueById(param, 0);
         } catch (e) {
           // 参数不存在
@@ -172,8 +177,9 @@ export const Live2DAvatar: React.FC<Live2DAvatarProps> = ({
     }
 
     // 播放待机动画
-    if (model.internalModel.motionManager) {
-      model.motion('idle', 0, PIXI.Live2DModel.PRIORITY_IDLE);
+    if (model.internalModel?.motionManager) {
+      // @ts-ignore
+      model.motion('idle', 0, PIXI.Live2DModel?.PRIORITY_IDLE || 1);
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import './StaticAvatar.css';
 
 interface StaticAvatarProps {
@@ -12,18 +12,14 @@ export const StaticAvatar: React.FC<StaticAvatarProps> = ({
   isPlaying = false,
   isSpeaking = false
 }) => {
-  const [currentFrame, setCurrentFrame] = useState(0);
-
   // 说话时的呼吸动画
   useEffect(() => {
     if (isPlaying || isSpeaking) {
       const interval = setInterval(() => {
-        setCurrentFrame((prev) => (prev + 1) % 3);
+        // Animation frame update
       }, 300);
 
       return () => clearInterval(interval);
-    } else {
-      setCurrentFrame(0);
     }
   }, [isPlaying, isSpeaking]);
 

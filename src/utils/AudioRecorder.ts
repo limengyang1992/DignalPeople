@@ -44,7 +44,7 @@ export class AudioRecorder {
         const pcmData = this.floatTo16BitPCM(inputData);
 
         if (this.onAudioData) {
-          this.onAudioData(pcmData.buffer);
+          this.onAudioData(pcmData.buffer as ArrayBuffer);
         }
       };
 
