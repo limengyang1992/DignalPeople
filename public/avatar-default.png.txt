@@ -1,0 +1,18 @@
+# 默认头像图片说明
+
+由于无法直接生成图片文件，请使用以下方式之一添加默认头像：
+
+1. **使用在线头像生成器**：
+   - https://ui-avatars.com/api/?name=AI+Assistant&size=400&background=667eea&color=fff
+   - 保存为 avatar-default.png
+
+2. **使用自己的图片**：
+   - 准备一张 400x400 的头像图片
+   - 命名为 avatar-default.png
+   - 放置在 public 目录
+
+3. **临时方案**：
+   在 StaticAvatar.tsx 中，imageUrl 可以使用在线图片链接：
+   ```
+   imageUrl="https://ui-avatars.com/api/?name=AI+Assistant&size=400&background=667eea&color=fff&font-size=0.4"
+   ```

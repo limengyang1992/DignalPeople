@@ -92,6 +92,16 @@ export class VolcanoRealtimeService extends EventEmitter {
       }
     };
 
+    // O版本支持 system_role
+    if (config.systemRole) {
+      sessionConfig.dialog.system_role = config.systemRole;
+    }
+
+    // SC版本支持 character_manifest
+    if (config.characterManifest) {
+      sessionConfig.dialog.character_manifest = config.characterManifest;
+    }
+
     await this.sendEvent(100, sessionConfig);
   }
 
