@@ -26,8 +26,12 @@ function App() {
   const playerRef = useRef<AudioPlayer | null>(null);
 
   useEffect(() => {
-    // 初始化客户端
-    clientRef.current = new RealtimeClient('ws://localhost:8080');
+    // 初始化客户端 - 根据环境自动选择 WebSocket 地址
+    const wsUrl = process.env.NODE_ENV === 'production'
+      ? `ws://${window.location.hostname}/ws`
+      : 'ws://localhost:8080';
+
+    clientRef.current = new RealtimeClient(wsUrl);
 
     // 初始化音频播放器
     playerRef.current = new AudioPlayer();
