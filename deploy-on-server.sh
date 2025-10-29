@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 数字人系统 - 服务器端部署脚本
+# 数字人系统 - 服务器端部署脚本（支持 CentOS/RHEL）
 # 直接在服务器上运行
 
 set -e
@@ -21,14 +21,38 @@ if [ ! -f "package.json" ]; then
     exit 1
 fi
 
+# 检测包管理器
+if command -v yum &> /dev/null; then
+    PKG_MANAGER="yum"
+    PKG_UPDATE="yum update -y"
+    PKG_INSTALL="yum install -y"
+elif command -v apt &> /dev/null; then
+    PKG_MANAGER="apt"
+    PKG_UPDATE="apt update && apt upgrade -y"
+    PKG_INSTALL="apt install -y"
+else
+    echo -e "${RED}错误: 不支持的系统，找不到 yum 或 apt${NC}"
+    exit 1
+fi
+
+echo "检测到包管理器: $PKG_MANAGER"
+echo ""
+
 echo -e "${GREEN}[1/8] 更新系统包...${NC}"
-apt update
+$PKG_UPDATE
 
 echo -e "${GREEN}[2/8] 安装 Node.js（如果需要）...${NC}"
 if ! command -v node &> /dev/null; then
     echo "安装 Node.js 18.x..."
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-    apt install -y nodejs
+    if [ "$PKG_MANAGER" = "yum" ]; then
+        # CentOS/RHEL
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+        yum install -y nodejs
+    else
+        # Ubuntu/Debian
+        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+        apt install -y nodejs
+    fi
 fi
 echo "Node.js: $(node -v)"
 echo "npm: $(npm -v)"
@@ -66,11 +90,24 @@ pm2 startup systemd -u root --hp /root
 
 echo -e "${GREEN}[7/8] 安装和配置 Nginx...${NC}"
 if ! command -v nginx &> /dev/null; then
-    apt install -y nginx
+    $PKG_INSTALL nginx
+
+    # CentOS 需要启动 Nginx
+    if [ "$PKG_MANAGER" = "yum" ]; then
+        systemctl start nginx
+        systemctl enable nginx
+    fi
+fi
+
+# CentOS 的配置文件路径不同
+if [ "$PKG_MANAGER" = "yum" ]; then
+    NGINX_CONF="/etc/nginx/conf.d/digital-people.conf"
+else
+    NGINX_CONF="/etc/nginx/sites-available/digital-people"
 fi
 
 # 创建 Nginx 配置
-cat > /etc/nginx/sites-available/digital-people << 'EOF'
+cat > $NGINX_CONF << 'EOF'
 server {
     listen 80;
     server_name 8.152.96.186;
@@ -108,11 +145,11 @@ server {
 }
 EOF
 
-# 启用配置
-ln -sf /etc/nginx/sites-available/digital-people /etc/nginx/sites-enabled/
-
-# 删除默认配置（避免冲突）
-rm -f /etc/nginx/sites-enabled/default
+# Ubuntu/Debian 需要启用站点
+if [ "$PKG_MANAGER" = "apt" ]; then
+    ln -sf /etc/nginx/sites-available/digital-people /etc/nginx/sites-enabled/
+    rm -f /etc/nginx/sites-enabled/default
+fi
 
 # 测试配置
 nginx -t
@@ -122,14 +159,41 @@ systemctl restart nginx
 systemctl enable nginx
 
 echo -e "${GREEN}[8/8] 配置防火墙...${NC}"
-if command -v ufw &> /dev/null; then
-    ufw allow 22/tcp
-    ufw allow 80/tcp
-    ufw allow 443/tcp
-    ufw allow 8080/tcp
-    ufw allow 3000/tcp
-    ufw --force enable
-    ufw status
+if [ "$PKG_MANAGER" = "yum" ]; then
+    # CentOS 使用 firewalld
+    if command -v firewall-cmd &> /dev/null; then
+        systemctl start firewalld
+        systemctl enable firewalld
+        firewall-cmd --permanent --add-port=22/tcp
+        firewall-cmd --permanent --add-port=80/tcp
+        firewall-cmd --permanent --add-port=443/tcp
+        firewall-cmd --permanent --add-port=8080/tcp
+        firewall-cmd --permanent --add-port=3000/tcp
+        firewall-cmd --reload
+        firewall-cmd --list-all
+    fi
+else
+    # Ubuntu 使用 ufw
+    if command -v ufw &> /dev/null; then
+        ufw allow 22/tcp
+        ufw allow 80/tcp
+        ufw allow 443/tcp
+        ufw allow 8080/tcp
+        ufw allow 3000/tcp
+        ufw --force enable
+        ufw status
+    fi
+fi
+
+# CentOS 需要配置 SELinux
+if [ "$PKG_MANAGER" = "yum" ]; then
+    echo -e "${GREEN}配置 SELinux...${NC}"
+    if command -v setenforce &> /dev/null; then
+        # 允许 Nginx 网络连接
+        setsebool -P httpd_can_network_connect 1
+        # 临时设置为宽容模式（可选）
+        # setenforce 0
+    fi
 fi
 
 echo ""
@@ -152,4 +216,9 @@ echo -e "${YELLOW}⚠️  安全提醒：${NC}"
 echo "1. 立即修改 root 密码: passwd"
 echo "2. 创建普通用户，禁用 root SSH 登录"
 echo "3. 配置 SSH 密钥认证"
+echo ""
+echo -e "${YELLOW}📝 CentOS 特别说明：${NC}"
+echo "如果遇到权限问题，可能需要调整 SELinux:"
+echo "  临时关闭: setenforce 0"
+echo "  永久关闭: 编辑 /etc/selinux/config，设置 SELINUX=disabled"
 echo ""
